@@ -2,3 +2,7 @@
 *.log
 *.toc
 *.swp
+*.bbl
+*.blg
+*.swo
+*.pdf

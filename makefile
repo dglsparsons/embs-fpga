@@ -2,7 +2,7 @@
 
 all: 
 	pdflatex --enable-write18 writeup.tex
-	pdflatex --enable-write18 writeup.tex
+	bibtex writeup.aux
 	pdflatex --enable-write18 writeup.tex
 	pdflatex --enable-write18 writeup.tex
 
