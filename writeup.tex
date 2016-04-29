@@ -36,7 +36,7 @@
 \date{\today}
 
 % For forcing float draw after tables
-%\usepackage{placeins}
+\usepackage{placeins}
 
 %Your report should discuss key problem analysis, design, implementation,
 %evaluation and testing activities. This should include discussion of:
@@ -48,7 +48,7 @@
 %\section*{Abstract}
 %\tableofcontents
 \section{Problem Analysis} %100 words
-For this open-assessment, the problem was to use an FPGA to solve an NP-hard 
+For this open-assessment, the target criteria is to use an FPGA to solve an NP-hard 
 problem: the travelling salesman problem. The solution must interact with a user 
 via serial to receive a world size and world-id. It will then
 request and download a world via ethernet, identify the shortest path around the 
@@ -74,13 +74,13 @@ given problem.
 \section{Implementation} % 200 words
 % A*
 % Storing 60 x 60 grid, 2 bits for state, 2 bits for direction of parent.
-In order to execute the A* in a reasonable amount of time, it was decided that
-the A* algorithm should be run on custom hardware, generated through vivado-hls. 
+For the A* and brute force to execute in a reasonable amount of time, it was decided that
+they should be run on custom hardware, generated through vivado-hls. 
 First, the relevant section of the replyworld packet is sent directly to the
 hardware. This prevents any overhead of unpacking the data, and repacking for
-communicating on the AXI streams. 
+communication on the AXI streams. 
 \par\bigskip\noindent
-In order to calculate the shortest path distances between each pair of
+For calculating shortest path distances between each pair of
 waypoints, an A* algorithm is used. However, rather than maintaining the notion of a
 closed list, and an open list, the entire world is stored in a 60 x 60 array.
 This enables both the current state of each coordinate, as well as the direction of
@@ -96,13 +96,15 @@ coordinates, ignoring any walls.
 Once the distance matrix has been established, a brute force algorithm
 determines the optimal order to visit each waypoint. This works by using the
 popular iterative algorithm, quickperm, to generate each of the $11!$ possible orderings of
-nodes \cite{quickperm}. 
-
-
-% Uses quickperm algorithm to test each possible combination. 
+nodes \cite{quickperm}. For each permutation generated, the total distance of
+visiting the waypoints in that order is calculated using the distance
+matrix. The best result and permutation are stored as this is performed.
+\par\bigskip\noindent
+Once the optimal path is determined, a second set of A* searches occurs, this
+outputs each coordinate of the shortest route found as the solution.
 
 \section{Acceleration Strategy} % 200 words
-In order to speed up the solution, 3 improvements were made upon the original design. 
+To speed up the solution, 3 improvements were made upon the original design. 
 First, as the original A* algorithm was calculating the cost of each node by 
 counting the number of parents until the start waypoint was reached, a significant 
 speedup was attained by instead keeping track of the cost associated with each 
@@ -115,13 +117,12 @@ generated. This occurs as distances between waypoints are the same in both direc
 for example, path A--B--C has the same cost as path C--B--A. As a result, these 
 duplicate results can be removed, significantly reducing the amount of permutations 
 needed. This results in a significant reduction in work: rather than the original 
-$11!$ permutations needed for a large world, there are therefore only
-$\frac{11!}{2}$. 
-Furthermore, this improves the speed of the brute force approach for all sizes of 
-world. This is implemented in practice by generating $10!$ permutations rather than
-$11!$, and, for each permutation generated, creating $6$ variants by treating the 
-first half of the array as having an extra element. This is illustrated by the
-following diagram: 
+$n!$ permutations needed, there are therefore only
+$\frac{n!}{2}$. 
+This is implemented in practice by generating $n-1!$ permutations using
+quickperm. For each of these permutations, several variants are created by 
+inserting the missing element into the first half of the array. 
+This is illustrated by the following diagram: 
 %TODO - UML? OF THE N!/2 INSERTION. 
 This highlights how the majority of reverse permutations are removed from the
 generated result. 
@@ -141,8 +142,34 @@ This highlights two iterative permutation algorithms occurring in parallel, prov
 a significant speedup in determining the optimal permutation. 
 
 \section{Evaluation and Testing} % 200 words
-
-\section{Conclusions} % 100 words
+% Testing strategy. 
+For testing the solution, one main method was employed. For
+determining the optimal hardware configuration in vivado-hls, a testbench was setup. This
+used data printed from the Microblaze for several variations of world sizes and 
+ids. This meant, prior to hardware generation, that the hardware was tested and 
+verified with data from actual solutions. This approach ensured the generated hardware 
+behaved as expected, as both the testbench and Microblaze code are nearly identical. 
+\par\bigskip\noindent
+% Performance enhancements
+To evaluate the performance enhancements performed on the completed solution,
+analysis of the timing for several large worlds was taken at each stage. This
+was achieved by manually timing the solution on several large worlds at each
+stage in the optimisation. This is highlighted by the following table: 
+\begin{table}[!htbp]
+\centering
+\begin{tabular}{l|lllll}
+                  &  &  \textbf{Time taken} & (seconds)          & \\ 
+    \textbf{Solution} & World id 1          & World id 2 & World id 3 & World id 4 & Average\\ \hline
+    Original Solution    & 33.0             & 36.2       & 36.5   & 34.2 & 35.0 \\ 
+    Storing Cost for A*  & 29.9             & 31.4       & 31.2   & 30.3 & 30.7 \\ 
+    Using $n!/2$         & 14.0             & 17.5       & 18.0   & 17.1 & 16.7 \\ 
+    Parallel Brute force & 7.0              & 8.4        & 8.4    & 7.8  & 7.9 
+\end{tabular}
+\end{table}
+\FloatBarrier\noindent
+This shows a 440\% increase in speed over the original implementation, highlighting 
+that a high performance solution can be found, capable of handling any of the three
+sizes of solution. 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 \end{document}
